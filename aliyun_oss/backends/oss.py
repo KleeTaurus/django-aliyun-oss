@@ -10,33 +10,34 @@ except ImportError:
 from django.conf import settings
 from django.core.files.base import File
 from django.core.files.storage import Storage
-from django.core.exceptions import ImproperlyConfigured
 
 from aliyun_oss.oss.oss_api import OssAPI
 from aliyun_oss.oss.oss_util import convert_header2map, safe_get_element
 
-ACCESS_ADDRESS          = getattr(settings, 'OSS_ACCESS_URL', 'oss.aliyuncs.com')
-ACCESS_KEY_NAME     = getattr(settings, 'OSS_ACCESS_KEY_ID')
-SECRET_KEY_NAME     = getattr(settings, 'OSS_SECRET_ACCESS_KEY')
-HEADERS             = getattr(settings, 'OSS_HEADERS', {})
-DEFAULT_ACL         = getattr(settings, 'OSS_DEFAULT_ACL', 'public-read')
+
+ACCESS_ADDRESS = getattr(settings, 'OSS_ACCESS_URL', 'oss.aliyuncs.com')
+ACCESS_KEY_NAME = getattr(settings, 'OSS_ACCESS_KEY_ID')
+SECRET_KEY_NAME = getattr(settings, 'OSS_SECRET_ACCESS_KEY')
+HEADERS = getattr(settings, 'OSS_HEADERS', {})
+DEFAULT_ACL = getattr(settings, 'OSS_DEFAULT_ACL', 'public-read')
 OSS_STORAGE_BUCKET_NAME = getattr(settings, 'OSS_STORAGE_BUCKET_NAME')
-BUCKET_PREFIX       = getattr(settings, 'OSS_BUCKET_PREFIX', '')
+BUCKET_PREFIX = getattr(settings, 'OSS_BUCKET_PREFIX', '')
 
 
 class OSSStorage(Storage):
     """Aliyun Open Storage Service"""
 
     def __init__(self, bucket=OSS_STORAGE_BUCKET_NAME,
-                access_key=None,
-                secret_key=None,
-                acl=DEFAULT_ACL,
-                # calling_format=CALLING_FORMAT,
-                encrypt=False,
-                # gzip=IS_GZIPPED,
-                # gzip_content_types=GZIP_CONTENT_TYPES,
-                # preload_metadata=PRELOAD_METADATA
-            ):
+                 access_key=None,
+                 secret_key=None,
+                 acl=DEFAULT_ACL,
+                 # calling_format=CALLING_FORMAT,
+                 encrypt=False,
+                 # gzip=IS_GZIPPED,
+                 # gzip_content_types=GZIP_CONTENT_TYPES,
+                 # preload_metadata=PRELOAD_METADATA
+                 ):
+
         self.bucket = bucket
         self.acl = acl
 
@@ -45,7 +46,6 @@ class OSSStorage(Storage):
 
         self.connection = OssAPI(ACCESS_ADDRESS, access_key, secret_key)
         self.headers = HEADERS
-
 
     def _get_access_keys(self):
         access_key = ACCESS_KEY_NAME
@@ -67,7 +67,7 @@ class OSSStorage(Storage):
         if content_type:
             pass
         else:
-            content_type = mimetypes.guess_type(name)[0] or "application/x-octet-stream"
+            content_type = mimetypes.guess_type(name)[0] or 'application/x-octet-stream'
 
         self.headers.update({
             'x-oss-acl': self.acl,
@@ -76,8 +76,8 @@ class OSSStorage(Storage):
         })
         fp = StringIO(content)
         response = self.connection.put_object_from_fp(self.bucket, name, fp, content_type, self.headers)
-        if (res.status / 100) != 2:
-            raise IOError("OSSStorageError: %s" % response.read())
+        if (response.status / 100) != 2:
+            raise IOError('OSSStorageError: %s' % response.read())
 
     def _open(self, name, mode='rb'):
         name = self._clean_name(name)
@@ -91,12 +91,12 @@ class OSSStorage(Storage):
         else:
             headers = {'Range': 'bytes=%s-%s' % (start_range, end_range)}
         response = self.connection.get_object(self.bucket, name, headers)
-        if (res.status / 100) != 2:
-            raise IOError("OSSStorageError: %s" % response.read())
+        if (response.status / 100) != 2:
+            raise IOError('OSSStorageError: %s' % response.read())
 
         header_map = convert_header2map(response.getheaders())
-        content_len = safe_get_element("content-length", header_map)
-        etag = safe_get_element("etag", header_map).upper()
+        content_len = safe_get_element('content-length', header_map)
+        etag = safe_get_element('etag', header_map).upper()
         return response.read(), etag, content_len
 
     def _save(self, name, content):
@@ -113,7 +113,7 @@ class OSSStorage(Storage):
         name = self._clean_name(name)
         response = self.connection.delete_object(self.bucket, name)
         if response.status != 204:
-            raise IOError("OSSStorageError: %s" % response.read())
+            raise IOError('OSSStorageError: %s' % response.read())
 
     def exists(self, name):
         name = self._clean_name(name)
@@ -124,7 +124,7 @@ class OSSStorage(Storage):
         name = self._clean_name(name)
         response = self.connection.head_object(self.bucket, name)
         header_map = convert_header2map(response.getheaders())
-        content_len = safe_get_element("content-length", header_map)
+        content_len = safe_get_element('content-length', header_map)
         return content_len and int(content_len) or 0
 
     def url(self, name):
@@ -133,7 +133,7 @@ class OSSStorage(Storage):
 
     def modified_time(self, name):
         try:
-           from dateutil import parser, tz
+            from dateutil import parser, tz
         except ImportError:
             raise NotImplementedError()
         name = self._clean_name(name)
@@ -143,7 +143,7 @@ class OSSStorage(Storage):
         # convert to string to date
         last_modified_date = parser.parse(last_modified)
         # if the date has no timzone, assume UTC
-        if last_modified_date.tzinfo == None:
+        if last_modified_date.tzinfo is None:
             last_modified_date = last_modified_date.replace(tzinfo=tz.tzutc())
         # convert date to local time w/o timezone
         return last_modified_date.astimezone(tz.tzlocal()).replace(tzinfo=None)
@@ -158,13 +158,13 @@ class OSSStorage(Storage):
         name = self._clean_name(name)
         response = self.connection.get_object_to_file(self.bucket, name, target)
         if response.status / 100 != 2:
-            raise IOError("OSSStorageError: %s" % response.read())
+            raise IOError('OSSStorageError: %s' % response.read())
 
     def save_file(self, filename, name):
         name = self._clean_name(name)
         response = self.connection.put_object_from_file(self.bucket, name, filename=filename, headers=self.headers)
         if response.status / 100 != 2:
-            raise IOError("OSSStorageError: %s" % response.read())
+            raise IOError('OSSStorageError: %s' % response.read())
 
 
 class OSSStorageFile(File):
@@ -198,7 +198,7 @@ class OSSStorageFile(File):
 
     def write(self, content):
         if 'w' not in self._mode:
-            raise AttributeError("File was opened for read-only access.")
+            raise AttributeError('File was opened for read-only access.')
         self.file = StringIO(content)
         self._is_dirty = True
 
